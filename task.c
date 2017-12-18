@@ -35,7 +35,6 @@ void task4(void) // sleep 5s
 void task5(void)
 {
 	int pid = hw_task_create("task3");
-
 	hw_suspend(1000);
 	fprintf(stdout, "task5: good morning~\n");
 	fflush(stdout);
