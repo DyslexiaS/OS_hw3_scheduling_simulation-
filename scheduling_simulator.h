@@ -11,22 +11,22 @@
 #include "task.h"
 
 enum TASK_STATE {
-    TASK_RUNNING,
-    TASK_READY,
-    TASK_WAITING,
-    TASK_TERMINATED
+	TASK_RUNNING,
+	TASK_READY,
+	TASK_WAITING,
+	TASK_TERMINATED
 };
-typedef struct node{
-    int pid;
-    char name[100];
-    char state[20];
-    int Q_time;
-    int S_time;
-    int W_time;
-    ucontext_t task;
-    struct node* next;
-    struct node* lnext;
-}Node;
+typedef struct node {
+	int pid;
+	char name[100];
+	char state[20];
+	int Q_time;
+	int S_time;
+	int W_time;
+	ucontext_t task;
+	struct node* next;
+	struct node* lnext;
+} Node;
 
 Node* front, *rear;
 Node* lfront, *lrear;
