@@ -23,6 +23,7 @@ typedef struct node {
 	int Q_time;
 	int S_time;
 	int W_time;
+	int Sleep_time;
 	ucontext_t task;
 	struct node* next;
 	struct node* lnext;
@@ -34,11 +35,18 @@ void creatq();
 void addq( char* name, int Q_time);
 void add_ready_q(Node* newnode);
 Node* delq();
+void re_ready_q(int pid);
+void removeq(int pid);
 void showq();
 void hw_suspend(int msec_10);
 void hw_wakeup_pid(int pid);
 int hw_wakeup_taskname(char *task_name);
 int hw_task_create(char *task_name);
+void shell();
+void simulating();
+void handler(int sig_num);
+void dormerq(int time);
+long getCurrentTime();
 int PID;
 static ucontext_t start;
 #endif

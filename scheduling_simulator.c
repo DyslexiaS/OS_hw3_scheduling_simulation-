@@ -29,10 +29,10 @@ void addq( char* name, int Q_time)
 			strcpy(newnode->name,name);
 			strcpy(newnode->state, "TASK_READY");
 
-			char stack[1024*128];
+			char *stack = (char*)malloc(4096);
 			getcontext(&newnode->task);
 			newnode->task.uc_stack.ss_sp = stack;
-			newnode->task.uc_stack.ss_size = sizeof(stack);
+			newnode->task.uc_stack.ss_size = 4096;
 			newnode->task.uc_stack.ss_flags = 0;
 			newnode->task.uc_link = &start;
 			switch(name[4]) {
@@ -75,7 +75,7 @@ void add_ready_q(Node* newnode)
 {
 	if(lfront->lnext == NULL)
 		lfront->lnext = newnode;
-	//newnode->S_time = ;
+	newnode->S_time = getCurrentTime();
 	newnode->lnext = NULL;
 	lrear->lnext = newnode;
 	lrear = newnode;
@@ -92,6 +92,56 @@ Node* del_ready_q()
 	delnode->lnext = NULL;
 	return (delnode);
 	//free(delnode);
+}
+void rm_ready_q(int pid)
+{
+	Node* rmnode;
+	Node* tmpnode;
+	if(lfront->lnext == NULL)
+		return;
+	tmpnode = lfront;
+	while(tmpnode->lnext != NULL) {
+		rmnode = tmpnode->lnext;
+		if(rmnode->pid == pid && lfront->lnext->lnext == NULL) {
+			lfront->lnext=NULL;
+			rear = (Node*)malloc(sizeof(Node));
+			rear->lnext = NULL;
+			return;
+		} else if(rmnode->pid == pid) {
+			tmpnode->lnext = rmnode->lnext;
+			rmnode->lnext = NULL;
+			return;
+		}
+		tmpnode = tmpnode->lnext;
+	}
+
+}
+void removeq(int pid)
+{
+	Node* rmnode;
+	Node* tmpnode;
+	rm_ready_q(pid);
+	if(front->next == NULL) {
+		printf("List is empty, you have nothing to remove!\n ");
+		return;
+	}
+	tmpnode = front;
+	while(tmpnode->next != NULL) {
+		rmnode = tmpnode->next;
+		if(rmnode->pid == pid && front->next->next == NULL) {
+			front->next=NULL;
+			rear = (Node*)malloc(sizeof(Node));
+			rear->next = NULL;
+			free(rmnode);
+			return;
+		} else if(rmnode->pid == pid) {
+			tmpnode->next = rmnode->next;
+			rmnode->next = NULL;
+			free(rmnode);
+			return;
+		}
+		tmpnode = tmpnode->next;
+	}
 }
 void showq()
 {
@@ -137,22 +187,14 @@ int hw_wakeup_taskname(char *task_name)
 
 int hw_task_create(char *task_name)
 {
-	addq(task_name,10);
-	return PID; // the pid of created task name
-}
-
-void handle_z(int sig_num)
-{
-	printf("Catch signal %d\n",signal);
-
-}
-void simulating()
-{
-	while(1) {
-
-
+	if(strlen(task_name)==5 && !strncmp(task_name,"task",4) && task_name[4]>='1'
+	   &&task_name<='6') {
+		addq(task_name,10);
+		return PID; // the pid of created task name
+	} else {
+		printf("TASK_NAME ERROR!\n");
+		return -1;
 	}
-	return;
 }
 void shell(void)
 {
@@ -160,6 +202,7 @@ void shell(void)
 	char name[100];
 	int Q_time=0;
 	char c;
+	int pid;
 	while(printf("$")) {
 		scanf("%s",tmp);
 		if(!strcmp(tmp,"add")) {
@@ -183,7 +226,8 @@ void shell(void)
 			} else    Q_time=10;
 			addq(name, Q_time);
 		} else if(!strcmp(tmp,"remove")) {
-
+			scanf("%d",&pid);
+			removeq(pid);
 		} else if(!strcmp(tmp,"start")) {
 			simulating();
 		} else if(!strcmp(tmp,"ps")) {
@@ -200,16 +244,52 @@ long getCurrentTime()
 	gettimeofday(&tv,NULL);
 	return tv.tv_sec *1000 +tv.tv_usec /1000;
 }
+void handler(int sig_num)
+{
+	switch(sig_num) {
+	case SIGALRM:
+		printf("timer\n");
+		break;
+	case SIGTSTP:
+		printf("Catch Ctrl+Z\n");
+		shell();
+		break;
+	default:
+		printf("SIGNAL ERROR.\n");
+		break;
+	}
+}
+void dormerq(int time)
+{
+
+
+}
+void simulating()
+{
+	getcontext(&start);
+	signal(SIGALRM, handler);
+	/*timer setting*/
+	struct itimerval new_value, old_value;
+	new_value.it_value.tv_sec=0;
+	new_value.it_value.tv_usec=20000;
+	new_value.it_interval.tv_sec=0;
+	new_value.it_interval.tv_usec=0;
+	setitimer(ITIMER_REAL, &new_value, &old_value);
+	printf("simulating...\n");
+
+	//setcontext(&);
+	return;
+}
 int main()
 {
-	signal(SIGTSTP,handle_z);
-	sleep(1);
+	signal(SIGTSTP,handler);
 	creatq();
-	long t1, t2;
-	t1 = getCurrentTime();
-	usleep(10000);
-	t2 = getCurrentTime();
-	printf("time = %ld\n",t2-t1);
+	/*	long t1, t2;
+		t1 = getCurrentTime();
+		usleep(10000);
+		t2 = getCurrentTime();
+		printf("time = %ld\n",t2-t1);
+	*/
 	shell();
 	return 0;
 }
