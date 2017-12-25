@@ -2,8 +2,8 @@
 
 void creatq()
 {
-	front = (Node*)malloc(sizeof(Node));
-	rear = (Node*)malloc(sizeof(Node));
+	front =(Node*)malloc(sizeof(Node));
+    rear = (Node*)malloc(sizeof(Node));
 	front->next = rear->next = NULL;
 	lfront = (Node*)malloc(sizeof(Node));
 	lrear = (Node*)malloc(sizeof(Node));
@@ -25,16 +25,15 @@ void addq( char* name, int Q_time)
 			newnode->pid = ++PID;
 			newnode->Q_time = Q_time;
 			newnode->W_time = 0;
-			name[0] |= 1<<5;
 			strcpy(newnode->name,name);
 			strcpy(newnode->state, "TASK_READY");
 
-			char *stack = (char*)malloc(4096);
+			char *stack = (char*)malloc(8192);
 			getcontext(&newnode->task);
 			newnode->task.uc_stack.ss_sp = stack;
-			newnode->task.uc_stack.ss_size = 4096;
+			newnode->task.uc_stack.ss_size = 8192;
 			newnode->task.uc_stack.ss_flags = 0;
-			newnode->task.uc_link = &start;
+			newnode->task.uc_link = &end;
 			switch(name[4]) {
 			case '1':
 				makecontext(&newnode->task,task1,0);
@@ -73,6 +72,8 @@ void addq( char* name, int Q_time)
 }
 void add_ready_q(Node* newnode)
 {
+    printf("in add_ready_Q:pid= %d, W_time= %d\n",newnode->pid,newnode->W_time);
+    strcpy(newnode->state,"TASK_READY");
 	if(lfront->lnext == NULL)
 		lfront->lnext = newnode;
 	newnode->S_time = getCurrentTime();
@@ -84,14 +85,16 @@ Node* del_ready_q()
 {
 	Node* delnode;
 	if(lfront->lnext == NULL) {
-		printf("Queue is empty!\n ");
+//		printf("Queue is empty!\n ");
 		return (NULL);
 	}
 	delnode = lfront->lnext;
 	lfront->lnext = delnode->lnext;
 	delnode->lnext = NULL;
+    //renew Queueing time
+    delnode->W_time +=(getCurrentTime()-delnode->S_time);
+    printf("del = %d\n",delnode->pid);
 	return (delnode);
-	//free(delnode);
 }
 void rm_ready_q(int pid)
 {
@@ -132,11 +135,13 @@ void removeq(int pid)
 			front->next=NULL;
 			rear = (Node*)malloc(sizeof(Node));
 			rear->next = NULL;
+			free(rmnode->task.uc_stack.ss_sp);
 			free(rmnode);
 			return;
 		} else if(rmnode->pid == pid) {
 			tmpnode->next = rmnode->next;
 			rmnode->next = NULL;
+			free(rmnode->task.uc_stack.ss_sp);
 			free(rmnode);
 			return;
 		}
@@ -147,14 +152,29 @@ void showq()
 {
 	Node* tmpnode;
 	tmpnode = front->next;
+    printf("********All Queue **********\n");
 	while(tmpnode != NULL) {
 		printf("%-3d%s  %-18s%d\n",tmpnode->pid,tmpnode->name,tmpnode->state,
-		       tmpnode->Q_time);
+		       tmpnode->W_time);
 		tmpnode = tmpnode->next;
+	}
+    printf("********Ready Queue**********\n");
+	tmpnode = lfront->lnext;
+	while(tmpnode != NULL) {
+        //puts("RQ");
+		printf("%-3d%s  %-18s%d\n",tmpnode->pid,tmpnode->name,tmpnode->state,
+		       tmpnode->W_time);
+		tmpnode = tmpnode->lnext;
 	}
 }
 void hw_suspend(int msec_10)
 {
+    set_timer(0);
+    strcpy(now->state,"TASK_WAITING");
+    now->Sleep_time = msec_10*10;
+    Node* tmp = now;
+    now = NULL;
+    swapcontext(&tmp->task, &start);
 	return;
 }
 
@@ -188,7 +208,7 @@ int hw_wakeup_taskname(char *task_name)
 int hw_task_create(char *task_name)
 {
 	if(strlen(task_name)==5 && !strncmp(task_name,"task",4) && task_name[4]>='1'
-	   &&task_name<='6') {
+	   &&task_name[4]<='6') {
 		addq(task_name,10);
 		return PID; // the pid of created task name
 	} else {
@@ -215,7 +235,7 @@ void shell(void)
 					if(!strcmp(tmp,"L"))    Q_time=20;
 					else if(!strcmp(tmp,"S"))    Q_time=10;
 					else {
-						printf("Input error.\n");
+					printf("Input error.\n");
 						while(getchar()!='\n');
 						continue;
 					}
@@ -224,7 +244,7 @@ void shell(void)
 					continue;
 				}
 			} else    Q_time=10;
-			addq(name, Q_time);
+		addq(name, Q_time);
 		} else if(!strcmp(tmp,"remove")) {
 			scanf("%d",&pid);
 			removeq(pid);
@@ -248,10 +268,26 @@ void handler(int sig_num)
 {
 	switch(sig_num) {
 	case SIGALRM:
-		printf("timer\n");
+		printf("Time is up!\n");
+        dormerq();
 		break;
 	case SIGTSTP:
 		printf("Catch Ctrl+Z\n");
+        //renew_time();
+        if(now!=NULL){
+            add_ready_q(now);
+     /*       printf("********RQ**********\n");
+            Node* tmpnode;
+            tmpnode = lfront->lnext;
+            while(tmpnode != NULL) {
+                printf("%-3d%s  %-18s%d\n",tmpnode->pid,tmpnode->name,tmpnode->state,
+                        tmpnode->W_time);
+                tmpnode = tmpnode->lnext;
+            }
+       */ 
+            now = NULL;
+            set_timer(0);
+        }
 		shell();
 		break;
 	default:
@@ -259,37 +295,131 @@ void handler(int sig_num)
 		break;
 	}
 }
-void dormerq(int time)
+//Timer
+void dormerq()
 {
-
-
+    if(now == NULL)
+        setcontext(&start);
+    printf("dormer pid = %d\n",now->pid);
+	Node* tmpnode;
+	tmpnode = front->next;
+	while(tmpnode != NULL) {
+        if(!strcmp(tmpnode->state,"TASK_WAITING"))
+        {
+            tmpnode->Sleep_time -= now->Q_time;
+            /*wake up task*/
+            if(tmpnode->Sleep_time <= 0)
+                add_ready_q(tmpnode);
+        }
+        tmpnode = tmpnode->next;
+	}
+    add_ready_q(now);
+    puts("in dormer,after add , before del.\n");
+    Node* run_node = del_ready_q();
+    strcpy(run_node->state,"TASK_RUNNING");
+    now = run_node;
+    set_timer(run_node->Q_time);
+    printf("swp %d / %d\n",lrear->pid,now->pid);
+    swapcontext(&lrear->task,&now->task);
+    printf("dormer done. pid =%d\n",now->pid);
+}
+void set_timer(int Q_time)
+{
+	/*timer setting*/
+	//struct itimerval new_value, old_value;
+	new_value.it_value.tv_sec=0;
+	new_value.it_value.tv_usec=Q_time*1000;
+	new_value.it_interval.tv_sec=0;
+	new_value.it_interval.tv_usec=0;
+    setitimer(ITIMER_REAL, &new_value, &old_value);
+}
+void renew_time(){
+	Node* tmpnode;
+	tmpnode = front->next;
+	while(tmpnode != NULL) {
+        if(!strcmp(tmpnode->state,"TASK_READY"))
+           tmpnode->W_time += (getCurrentTime()-now->S_time);
+        if(!strcmp(tmpnode->state,"TASK_WAITING"))
+        {
+            tmpnode->Sleep_time -= now->Q_time;
+            /*wake up task*/
+            if(tmpnode->Sleep_time <= 0)
+                add_ready_q(tmpnode);
+        }
+        tmpnode = tmpnode->next;
+	}	
+    puts("yeah");
+}
+bool task_exist(){
+    /*check no task*/
+    Node* tmpnode;
+    tmpnode = front->next;
+    while(tmpnode != NULL){
+        if(strcmp(tmpnode->state,"TASK_TERMINATED"))
+            return 1;
+        tmpnode = tmpnode ->next;
+    }
+    return 0;
 }
 void simulating()
 {
-	getcontext(&start);
-	signal(SIGALRM, handler);
-	/*timer setting*/
-	struct itimerval new_value, old_value;
-	new_value.it_value.tv_sec=0;
-	new_value.it_value.tv_usec=20000;
-	new_value.it_interval.tv_sec=0;
-	new_value.it_interval.tv_usec=0;
-	setitimer(ITIMER_REAL, &new_value, &old_value);
+    /*everyone get start time*/
+    Node* tmpnode;
+    tmpnode = lfront->lnext;
+    while(tmpnode != NULL){
+        tmpnode->S_time = getCurrentTime();
+        printf("pid= %d,S_time= %d",tmpnode->pid,tmpnode->S_time);
+        tmpnode = tmpnode ->next;
+    }
 	printf("simulating...\n");
-
-	//setcontext(&);
+    getcontext(&start);
+    if(!task_exist())   shell();
+  /*check ready Queue*/
+    Node* run_node = del_ready_q();
+    if(run_node == NULL)    //no running, some waiting
+    {
+        usleep(10000);
+        Node* tmpnode;
+        tmpnode = front->next;
+        while(tmpnode != NULL){
+            if(!strcmp(tmpnode->state,"TASK_WAITING"))
+                tmpnode->Sleep_time-=10;
+            if(tmpnode->Sleep_time <= 0)
+                add_ready_q(tmpnode);
+            tmpnode = tmpnode ->next;
+        }
+        setcontext(&start);
+    }
+    else{
+        now = run_node;
+        strcpy(run_node->state,"TASK_RUNNING");
+        set_timer(run_node->Q_time);
+        assert(setcontext(&run_node->task)!=-1);
+    }
 	return;
+}
+void termination(){
+    getcontext(&end);
+    if(now == NULL) return;
+    strcpy(now->state,"TASK_TERMINATED");
+    now = NULL;
+    setcontext(&start);
+}
+void signal_init(){
+    struct sigaction stp;
+    stp.sa_handler = &handler;
+    sigemptyset(&stp.sa_mask);
+    sigaddset(&stp.sa_mask, SIGALRM);
+    sigaddset(&stp.sa_mask, SIGTSTP);
+    stp.sa_flags = 0;
+    assert(sigaction(SIGALRM, &stp, NULL)==0);
+    assert(sigaction(SIGTSTP, &stp, NULL)==0);
 }
 int main()
 {
-	signal(SIGTSTP,handler);
+    signal_init();
 	creatq();
-	/*	long t1, t2;
-		t1 = getCurrentTime();
-		usleep(10000);
-		t2 = getCurrentTime();
-		printf("time = %ld\n",t2-t1);
-	*/
+    termination();
 	shell();
 	return 0;
 }
