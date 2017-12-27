@@ -23,8 +23,8 @@ typedef struct node {
 	char name[100];
 	char state[20];
 	int Q_time; //Quantum T
-	int S_time; //start T
-	int W_time; //Queueing T
+	long long int S_time; //start T
+	long long int W_time; //Queueing T
 	int Sleep_time; //suspend T
 	ucontext_t task;
 	struct node* next;
@@ -54,10 +54,9 @@ void dormerq();
 bool task_exist();
 void termination();
 void signal_init();
+void start_time();
 long getCurrentTime();
 int PID;
-static ucontext_t start;
-static ucontext_t end;
 
 #endif
 
