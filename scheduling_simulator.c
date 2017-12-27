@@ -73,7 +73,7 @@ void addq( char* name, int Q_time)
 }
 void add_ready_q(Node* newnode)
 {
-//	printf("in add_ready_Q:pid= %d, W_time= %lld\n",newnode->pid,newnode->W_time);
+	//printf("in add_ready_Q:pid= %d, W_time= %lld\n",newnode->pid,newnode->W_time);
 	newnode->lnext = NULL;
 	if(lfront == lrear) {
 		lfront->lnext = newnode;
@@ -113,8 +113,9 @@ void rm_ready_q(int pid)
 		rmnode = tmpnode->lnext;
 		if(rmnode->pid == pid && lfront->lnext->lnext == NULL) {
 			lfront->lnext=NULL;
-			rear = (Node*)malloc(sizeof(Node));
-			rear->lnext = NULL;
+//			lrear = (Node*)malloc(sizeof(Node));
+//          lrear->lnext = NULL;
+			lrear = lfront;
 			return;
 		} else if(rmnode->pid == pid) {
 			tmpnode->lnext = rmnode->lnext;
@@ -157,17 +158,21 @@ void showq()
 {
 	Node* tmpnode;
 	tmpnode = front->next;
-	printf("********All Queue **********\n");
+	printf("*************All Queue ***************\n");
+	printf("PID TASK_NAME TASK_STATE QUEUEING_TIME SLEEPING_TIME\n");
 	while(tmpnode != NULL) {
-		printf("%-3d%s  %-18s%lld\n",tmpnode->pid,tmpnode->name,tmpnode->state,
-		       tmpnode->W_time);
+		printf("%-3d  %s    %-18s%lld         %-5d\n",tmpnode->pid,tmpnode->name,
+		       tmpnode->state,
+		       tmpnode->W_time,tmpnode->Sleep_time);
 		tmpnode = tmpnode->next;
 	}
-	printf("********Ready Queue**********\n");
 	tmpnode = lfront->lnext;
+	printf("*************Ready Queue***************\n");
+	printf("PID TASK_NAME TASK_STATE QUEUEING_TIME SLEEPING_TIME\n");
 	while(tmpnode != NULL) {
-		printf("%-3d%s  %-18s%lld\n",tmpnode->pid,tmpnode->name,tmpnode->state,
-		       tmpnode->W_time);
+		printf("%-3d  %s    %-18s%lld         %-5d\n",tmpnode->pid,tmpnode->name,
+		       tmpnode->state,
+		       tmpnode->W_time,tmpnode->Sleep_time);
 		tmpnode = tmpnode->lnext;
 	}
 }
@@ -200,7 +205,7 @@ int hw_wakeup_taskname(char *task_name)
 	int wake_num = 0;
 	tmpnode = front->next;
 	while(tmpnode != NULL) {
-		if(!strcmp(tmpnode->name,task_name)) {
+		if(!strcmp(tmpnode->name,task_name)&&!strcmp(tmpnode->state,"TASK_WAITING")) {
 			add_ready_q(tmpnode);
 			++ wake_num;
 		}
@@ -255,6 +260,7 @@ void shell(void)
 			removeq(pid);
 		} else if(!strcmp(tmp,"start")) {
 			start_time();
+			printf("simulating...\n");
 			swapcontext(&shell_mode,&start);
 		} else if(!strcmp(tmp,"ps")) {
 			showq();
@@ -284,7 +290,6 @@ void handler(int sig_num)
 			set_timer(0);
 		}
 		getcontext(&current);
-		//shell();
 		swapcontext(&current,&shell_mode);
 		break;
 	default:
@@ -371,7 +376,6 @@ void start_time()
 }
 void simulating()
 {
-	printf("\nsimulating...\n");
 	while(1) {
 		if(!task_exist())
 			swapcontext(&start,&shell_mode);
@@ -439,6 +443,5 @@ int main()
 	makecontext(&start,simulating,0);
 
 	shell();
-	showq();
 	return 0;
 }

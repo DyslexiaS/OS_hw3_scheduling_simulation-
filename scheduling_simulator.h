@@ -33,7 +33,9 @@ typedef struct node {
 Node* now;
 Node* front, *rear;
 Node* lfront, *lrear;
+int PID;
 struct itimerval new_value,old_value;
+/****Queue****/
 void creatq();
 void addq( char* name, int Q_time);
 void add_ready_q(Node* newnode);
@@ -41,22 +43,24 @@ Node* delq();
 void re_ready_q(int pid);
 void removeq(int pid);
 void showq();
+/****hw_function****/
 void hw_suspend(int msec_10);
 void hw_wakeup_pid(int pid);
 int hw_wakeup_taskname(char *task_name);
 int hw_task_create(char *task_name);
-void shell();
+/*****time*****/
 void set_timer(int Q_time);
+void start_time();
 void renew_time();
 void simulating();
+long getCurrentTime();
+/*****signal*****/
+void signal_init();
 void handler(int sig_num);
 void dormerq();
 bool task_exist();
 void termination();
-void signal_init();
-void start_time();
-long getCurrentTime();
-int PID;
+void shell();
 
 #endif
 
