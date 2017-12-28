@@ -113,8 +113,6 @@ void rm_ready_q(int pid)
 		rmnode = tmpnode->lnext;
 		if(rmnode->pid == pid && lfront->lnext->lnext == NULL) {
 			lfront->lnext=NULL;
-//			lrear = (Node*)malloc(sizeof(Node));
-//          lrear->lnext = NULL;
 			lrear = lfront;
 			return;
 		} else if(rmnode->pid == pid) {
@@ -231,29 +229,25 @@ void shell(void)
 	char tmp[100];
 	char name[100];
 	int Q_time=0;
-	char c;
 	int pid;
+	char opt[50];
+	char time[50];
 	while(printf("$")) {
 		scanf("%s",tmp);
 		if(!strcmp(tmp,"add")) {
 			scanf("%s",name);
-			scanf("%c",&c);
-			if(c!='\n') {
-				scanf("%s",tmp);
-				if(!strcmp(tmp,"-t")) {
-					scanf("%s",tmp);
-					if(!strcmp(tmp,"L"))    Q_time=20;
-					else if(!strcmp(tmp,"S"))    Q_time=10;
-					else {
-						printf("Input error.\n");
-						while(getchar()!='\n');
-						continue;
-					}
-				} else {
-					printf("Input error.\n");
-					continue;
-				}
-			} else    Q_time=10;
+			fgets(tmp,sizeof(tmp),stdin);
+			memset(opt,0,50);
+			memset(time,0,50);
+			sscanf(tmp,"%s%s",opt,time);
+			if(!strcmp(opt,"-t")) {
+				if(!strcmp(time,"L"))    Q_time=20;
+				else if(!strcmp(time,"S"))    Q_time=10;
+			} else if(strlen(opt)==0&&strlen(time)==0)    Q_time=10;
+			else {
+				printf("Input error.\n");
+				continue;
+			}
 			addq(name, Q_time);
 		} else if(!strcmp(tmp,"remove")) {
 			scanf("%d",&pid);
@@ -297,7 +291,7 @@ void handler(int sig_num)
 		break;
 	}
 }
-//Timer
+//Timer handler
 void dormerq()
 {
 	if(now == NULL)
@@ -397,7 +391,8 @@ void simulating()
 			now = run_node;
 			strcpy(run_node->state,"TASK_RUNNING");
 			set_timer(run_node->Q_time);
-			assert(setcontext(&run_node->task)!=-1);//HERE
+//			assert(setcontext(&run_node->task)!=-1);
+			swapcontext(&start,&run_node->task);
 		}
 	}
 }
