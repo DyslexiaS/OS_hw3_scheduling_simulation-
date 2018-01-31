@@ -22,4 +22,5 @@ $ ps
 - 2    task2    TASK_TERMINATED    10 
 - 3    task2    TASK_READY         50
 - 4    task3    TASK_WAITING       50
-PID Task name                      Task state Queueing time
+     - PID Task name                      
+     - Task state Queueing time
