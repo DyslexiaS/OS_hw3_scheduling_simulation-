@@ -18,10 +18,8 @@ simulating
 ## ps
 when simulating… ,you can do Ctrl + z to pause the simulation and switch to shell mode.
 $ ps 
-1    task1    TASK_READY         50 
-2    task2    TASK_TERMINATED    10 
-3    task2    TASK_READY         50
-4    task3    TASK_WAITING       50
-
-PID Task name
-Task state Queueing time
+- 1    task1    TASK_READY         50 
+- 2    task2    TASK_TERMINATED    10 
+- 3    task2    TASK_READY         50
+- 4    task3    TASK_WAITING       50
+PID Task name                      Task state Queueing time
